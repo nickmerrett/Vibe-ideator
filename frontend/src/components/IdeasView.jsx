@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { api } from '../services/api';
+import { fmtDate } from '../utils/dates';
 import AIChat from './AIChat';
 import BrainstormChat from './BrainstormChat';
 import PromoteChat from './PromoteChat';
@@ -566,10 +567,13 @@ export default function IdeasView({ activeArea = null }) {
                   <span>⚡ {idea.excitement}/10</span>
                   <span>⏱️ {idea.complexity}</span>
                   {idea.created_at && (
-                    <span>📅 {new Date(idea.created_at).toLocaleDateString()}</span>
+                    <span>📅 {fmtDate(idea.created_at)}</span>
                   )}
                   {((idea.related_ideas?.length > 0) || idea.parent_idea_id) && (
                     <span className="text-primary">🔗 {(idea.parent_idea_id ? 1 : 0) + (idea.related_ideas?.length || 0)}</span>
+                  )}
+                  {idea.sharing_enabled && (
+                    <span className="text-blue-400" title="Sharing enabled">🔗 shared</span>
                   )}
                   {idea.unread_comment_count > 0 && (
                     <span className="text-green-400">💬 {idea.unread_comment_count}</span>
