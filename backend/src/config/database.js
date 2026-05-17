@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 export const DB_TYPE = process.env.DB_TYPE || 'sqlite';
 
 const ARRAY_COLS = ['tags', 'vibe', 'tech_stack', 'links', 'related_ideas'];
-const JSON_COLS  = ['conversation', 'settings', 'messages', 'project_plan'];
+const JSON_COLS  = ['conversation', 'riff_conversation', 'settings', 'messages', 'project_plan'];
 const BOOL_COLS  = ['archived', 'ai_generated', 'git_committed', 'completed', 'sharing_enabled', 'is_author_reply'];
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 

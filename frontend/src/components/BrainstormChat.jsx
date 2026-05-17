@@ -14,11 +14,16 @@ export default function BrainstormChat({ onClose, seedIdea = null }) {
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
-  const { createIdea } = useDataStore();
+  const { updateIdea } = useDataStore();
+  const [savedSnippetIds, setSavedSnippetIds] = useState(new Set());
 
   useEffect(() => {
     loadProviders();
-    startConversation();
+    if (seedIdea) {
+      loadRiffHistory();
+    } else {
+      startConversation();
+    }
     initVoiceRecognition();
 
     return () => {
@@ -84,6 +89,15 @@ export default function BrainstormChat({ onClose, seedIdea = null }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const loadRiffHistory = () => {
+    const history = seedIdea.riff_conversation;
+    if (Array.isArray(history) && history.length > 0) {
+      setMessages(history);
+    } else {
+      startConversation();
+    }
+  };
+
   const loadProviders = async () => {
     try {
       const data = await api.getAIProviders();
@@ -99,13 +113,13 @@ export default function BrainstormChat({ onClose, seedIdea = null }) {
     setLoading(true);
     setError(null);
 
-    const systemPrompt = `You are a focused brainstorming partner. Ask one good question or make one sharp observation per reply.
+    const systemPrompt = `You are a supportive thinking partner helping someone develop their idea. Each reply does one thing: ask a curious question, build on something they said, or gently surface a tension worth exploring.
 
-- Surface angles the user might not have considered
-- Challenge assumptions briefly
-- Keep it grounded and practical
+- Mostly draw them out — what excites them, what they haven't figured out yet, what the idea could become
+- Occasionally challenge an assumption, but from a place of genuine curiosity not scepticism
+- Match their energy; if they're excited, be warm; if they're uncertain, be steady
 
-One or two sentences max. No lists, no enthusiasm, no emojis.`;
+One or two sentences max. Conversational tone, no lists, no emojis.`;
 
     let userPrompt;
     if (seedIdea) {
@@ -120,10 +134,14 @@ One or two sentences max. No lists, no enthusiasm, no emojis.`;
         { provider, systemPrompt }
       );
 
-      setMessages([
+      const initial = [
         { role: 'user', content: userPrompt, hidden: !!seedIdea },
         { role: 'assistant', content: response.message }
-      ]);
+      ];
+      setMessages(initial);
+      if (seedIdea) {
+        updateIdea(seedIdea.id, { riff_conversation: initial }).catch(() => {});
+      }
     } catch (error) {
       setError(error.message);
     } finally {
@@ -167,17 +185,22 @@ One or two sentences max. No lists, no enthusiasm, no emojis.`;
     setLoading(true);
     setError(null);
 
-    const systemPrompt = `You are a focused brainstorming partner. Ask one good question or make one sharp observation per reply.
+    const systemPrompt = `You are a supportive thinking partner helping someone develop their idea. Each reply does one thing: ask a curious question, build on something they said, or gently surface a tension worth exploring.
 
-- Surface angles the user might not have considered
-- Challenge assumptions briefly
-- Keep it grounded and practical
+- Mostly draw them out — what excites them, what they haven't figured out yet, what the idea could become
+- Occasionally challenge an assumption, but from a place of genuine curiosity not scepticism
+- Match their energy; if they're excited, be warm; if they're uncertain, be steady
 
-One or two sentences max. No lists, no enthusiasm, no emojis.`;
+One or two sentences max. Conversational tone, no lists, no emojis.`;
 
     try {
       const response = await api.chatWithAI(newMessages, { provider, systemPrompt, temperature: 0.7, maxTokens: 300 });
-      setMessages([...newMessages, { role: 'assistant', content: response.message }]);
+      const assistantMsg = { role: 'assistant', content: response.message };
+      const updated = [...newMessages, assistantMsg];
+      setMessages(updated);
+      if (seedIdea) {
+        updateIdea(seedIdea.id, { riff_conversation: updated }).catch(() => {});
+      }
     } catch (error) {
       setError(error.message);
     } finally {
@@ -195,23 +218,18 @@ One or two sentences max. No lists, no enthusiasm, no emojis.`;
     setShowCaptures(true);
   };
 
-  const handleSaveSnippetAsIdea = async (snippet) => {
-    const title = snippet.text.split('\n')[0].substring(0, 60);
+  const handleAddToNotes = async (snippet) => {
+    if (!seedIdea) return;
     try {
-      await createIdea({
-        title,
-        summary: snippet.text,
-        tags: seedIdea?.tags || [],
-        excitement: 5,
-        complexity: 'weekend',
-        vibe: ['brainstorm', 'captured'],
-        techStack: [],
-        parent_idea_id: seedIdea?.id,
-        related_ideas: seedIdea ? [seedIdea.id] : []
-      });
-      setCapturedSnippets(prev => prev.filter(s => s.id !== snippet.id));
+      const existing = seedIdea.notes?.trim() || '';
+      const appended = existing
+        ? `${existing}\n\n• ${snippet.text.trim()}`
+        : `• ${snippet.text.trim()}`;
+      await updateIdea(seedIdea.id, { notes: appended });
+      seedIdea.notes = appended;
+      setSavedSnippetIds(prev => new Set([...prev, snippet.id]));
     } catch (error) {
-      console.error('Failed to save snippet:', error);
+      console.error('Failed to add to notes:', error);
     }
   };
 
@@ -292,10 +310,11 @@ One or two sentences max. No lists, no enthusiasm, no emojis.`;
                 <p className="text-gray-200 mb-3 text-xs leading-relaxed">{snippet.text}</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleSaveSnippetAsIdea(snippet)}
-                    className="flex-1 px-2 py-1 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs transition-all"
+                    onClick={() => handleAddToNotes(snippet)}
+                    disabled={!seedIdea || savedSnippetIds.has(snippet.id)}
+                    className="flex-1 px-2 py-1 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs transition-all disabled:opacity-50"
                   >
-                    💡 Save as idea
+                    {savedSnippetIds.has(snippet.id) ? '✓ Added to notes' : '📝 Add to notes'}
                   </button>
                   <button
                     onClick={() => setCapturedSnippets(prev => prev.filter(s => s.id !== snippet.id))}

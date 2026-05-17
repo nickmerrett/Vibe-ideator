@@ -111,7 +111,8 @@ router.put('/:id', async (req, res) => {
     if (body.archived     !== undefined) updates.archived      = body.archived ? 1 : 0;
     if (body.related_ideas   !== undefined) updates.related_ideas  = JSON.stringify(body.related_ideas);
     if (body.parent_idea_id  !== undefined) updates.parent_idea_id = body.parent_idea_id;
-    if (body.research     !== undefined) updates.research      = body.research;
+    if (body.research          !== undefined) updates.research           = body.research;
+    if (body.riff_conversation !== undefined) updates.riff_conversation  = JSON.stringify(body.riff_conversation);
     if ('area_id'         in  body)      updates.area_id       = body.area_id || null;
 
     if (!Object.keys(updates).length) {

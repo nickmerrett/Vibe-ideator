@@ -190,6 +190,7 @@ class APIClient {
     });
   }
 
+
   async promoteIdea(id, projectData) {
     return this.request(`/ideas/${id}/promote`, {
       method: 'POST',
