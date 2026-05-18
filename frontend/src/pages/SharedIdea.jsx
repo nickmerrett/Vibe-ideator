@@ -77,6 +77,10 @@ export default function SharedIdea() {
 
   const tags = Array.isArray(data.tags) ? data.tags : [];
   const vibe = Array.isArray(data.vibe) ? data.vibe : [];
+  const links = Array.isArray(data.links) ? data.links.filter(Boolean) : [];
+  const riffMessages = Array.isArray(data.riff_conversation)
+    ? data.riff_conversation.filter(m => !m.hidden)
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -119,6 +123,63 @@ export default function SharedIdea() {
           <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
             <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Notes</h2>
             <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.notes}</p>
+          </div>
+        )}
+
+        {/* Design document */}
+        {data.design_document && (
+          <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Design</h2>
+            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.design_document}</p>
+          </div>
+        )}
+
+        {/* Validation / research */}
+        {data.research && (
+          <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Validation</h2>
+            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.research}</p>
+          </div>
+        )}
+
+        {/* Links */}
+        {links.length > 0 && (
+          <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Links</h2>
+            <ul className="space-y-2">
+              {links.map((link, i) => (
+                <li key={i}>
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary text-sm hover:underline break-all"
+                  >
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Riff conversation */}
+        {riffMessages.length > 0 && (
+          <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wide">💭 Thinking out loud</h2>
+            <div className="space-y-3">
+              {riffMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-primary/20 text-white border border-primary/20'
+                      : 'bg-white/5 text-gray-300 border border-white/10'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

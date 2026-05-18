@@ -31,7 +31,7 @@ router.get('/:token', async (req, res) => {
   try {
     const idea = await db('ideas')
       .where({ share_token: req.params.token, sharing_enabled: 1 })
-      .select('id', 'title', 'summary', 'tags', 'vibe', 'excitement', 'complexity', 'notes', 'design_document', 'created_at')
+      .select('id', 'title', 'summary', 'tags', 'vibe', 'excitement', 'complexity', 'notes', 'design_document', 'links', 'research', 'riff_conversation', 'created_at')
       .first();
 
     if (!idea) return res.status(404).json({ error: 'Shared idea not found' });
