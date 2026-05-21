@@ -15,7 +15,8 @@ function buildServer(userId) {
 
   server.tool(
     'list_areas',
-    { description: 'List all areas (project categories)' },
+    'List all areas (project categories)',
+    {},
     async () => {
       const areas = await db('areas')
         .where({ user_id: userId })
@@ -29,8 +30,8 @@ function buildServer(userId) {
 
   server.tool(
     'list_ideas',
+    'List ideas with optional filters',
     {
-      description: 'List ideas with optional filters',
       status: z.string().optional().describe('Filter by status (e.g. new, refining, refined)'),
       area_id: z.string().optional().describe('Filter by area UUID'),
       limit: z.number().int().min(1).max(100).optional().describe('Max results (default 20)'),
@@ -50,8 +51,8 @@ function buildServer(userId) {
 
   server.tool(
     'get_idea',
+    'Get a single idea by ID',
     {
-      description: 'Get a single idea by ID',
       id: z.string().describe('Idea UUID'),
     },
     async ({ id }) => {
@@ -63,8 +64,8 @@ function buildServer(userId) {
 
   server.tool(
     'create_idea',
+    'Save a new idea',
     {
-      description: 'Save a new idea',
       title: z.string().describe('Idea title'),
       summary: z.string().optional().describe('Brief description'),
       tags: z.array(z.string()).optional().describe('Tags'),
@@ -94,8 +95,8 @@ function buildServer(userId) {
 
   server.tool(
     'update_idea',
+    'Update fields on an existing idea',
     {
-      description: 'Update fields on an existing idea',
       id: z.string().describe('Idea UUID'),
       title: z.string().optional(),
       summary: z.string().optional(),
@@ -133,8 +134,8 @@ function buildServer(userId) {
 
   server.tool(
     'delete_idea',
+    'Delete an idea permanently',
     {
-      description: 'Delete an idea permanently',
       id: z.string().describe('Idea UUID'),
     },
     async ({ id }) => {
@@ -148,8 +149,8 @@ function buildServer(userId) {
 
   server.tool(
     'capture',
+    'Send a rough thought to the AI capture assistant — it will help shape and save it as an idea',
     {
-      description: 'Send a rough thought to the AI capture assistant — it will help shape and save it as an idea',
       message: z.string().describe('The rough thought, idea fragment, or observation to capture'),
     },
     async ({ message }) => {
