@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import ResearchPanel from './ResearchPanel';
 
 export default function WeeklyReviewModal({ onClose, onComplete }) {
   const [ideas, setIdeas] = useState([]);
@@ -127,6 +128,9 @@ export default function WeeklyReviewModal({ onClose, onComplete }) {
                   )}
                 </div>
               </div>
+
+              {/* Research */}
+              <ResearchPanel idea={idea} />
 
               {/* Triage actions */}
               <div className="grid grid-cols-2 gap-2">

@@ -230,7 +230,7 @@ router.get('/review', async (req, res) => {
       .where(function () {
         this.whereNull('snoozed_until').orWhere('snoozed_until', '<', now);
       })
-      .select('id', 'title', 'summary', 'tags', 'status', 'excitement', 'complexity', 'area_id', 'updated_at', 'last_reviewed_at')
+      .select('id', 'title', 'summary', 'tags', 'status', 'excitement', 'complexity', 'area_id', 'updated_at', 'last_reviewed_at', 'research')
       .orderBy('updated_at', 'asc');
 
     res.json({ ideas, count: ideas.length });
