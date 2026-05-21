@@ -217,4 +217,72 @@ router.post('/:id/promote', async (req, res) => {
   }
 });
 
+// Get ideas due for weekly review (stale for 14+ days, not archived, snooze expired)
+router.get('/review', async (req, res) => {
+  try {
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+
+    const ideas = await db('ideas')
+      .where({ user_id: userId(req), archived: 0 })
+      .whereNot({ status: 'promoted-to-project' })
+      .where('updated_at', '<', cutoff)
+      .where(function () {
+        this.whereNull('snoozed_until').orWhere('snoozed_until', '<', now);
+      })
+      .select('id', 'title', 'summary', 'tags', 'status', 'excitement', 'complexity', 'area_id', 'updated_at', 'last_reviewed_at')
+      .orderBy('updated_at', 'asc');
+
+    res.json({ ideas, count: ideas.length });
+  } catch (error) {
+    console.error('Review fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch review queue' });
+  }
+});
+
+// Triage a single idea during weekly review
+router.post('/:id/review', async (req, res) => {
+  try {
+    const { action } = req.body;
+    if (!['keep', 'archive', 'snooze', 'promote'].includes(action)) {
+      return res.status(400).json({ error: 'action must be keep, archive, snooze, or promote' });
+    }
+
+    const idea = await db('ideas').where({ id: req.params.id, user_id: userId(req) }).first();
+    if (!idea) return res.status(404).json({ error: 'Idea not found' });
+
+    const now = new Date().toISOString();
+    const updates = { last_reviewed_at: now };
+
+    if (action === 'archive') {
+      updates.archived = 1;
+    } else if (action === 'snooze') {
+      updates.snoozed_until = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (action === 'promote') {
+      const [project] = await db('projects').insert({
+        id: generateUUID(),
+        user_id: userId(req),
+        origin_idea_id: idea.id,
+        title: idea.title,
+        description: idea.summary,
+        tech_stack: idea.tech_stack || JSON.stringify([]),
+        vibe: idea.vibe || JSON.stringify([]),
+        excitement: idea.excitement,
+        status: 'planning',
+        project_plan: JSON.stringify({ goals: [], phases: [], estimatedDuration: null }),
+      }).returning('*');
+      updates.status = 'promoted-to-project';
+      updates.project_id = project.id;
+      await db('ideas').where({ id: idea.id }).update(updates);
+      return res.json({ action, project });
+    }
+
+    await db('ideas').where({ id: idea.id }).update(updates);
+    res.json({ action, id: idea.id });
+  } catch (error) {
+    console.error('Review triage error:', error);
+    res.status(500).json({ error: 'Failed to triage idea' });
+  }
+});
+
 export default router;

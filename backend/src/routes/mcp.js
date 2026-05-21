@@ -145,7 +145,71 @@ function buildServer(userId) {
     }
   );
 
-  // ── Capture ──────────────────────────────────────────────────────────────
+  // ── Review ───────────────────────────────────────────────────────────────
+
+  server.tool(
+    'get_review_queue',
+    'Get ideas due for weekly review (untouched for 14+ days, not archived, snooze expired)',
+    {},
+    async () => {
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date().toISOString();
+      const ideas = await db('ideas')
+        .where({ user_id: userId, archived: 0 })
+        .whereNot({ status: 'promoted-to-project' })
+        .where('updated_at', '<', cutoff)
+        .where(function () {
+          this.whereNull('snoozed_until').orWhere('snoozed_until', '<', now);
+        })
+        .select('id', 'title', 'summary', 'status', 'excitement', 'complexity', 'updated_at')
+        .orderBy('updated_at', 'asc');
+      return { content: [{ type: 'text', text: JSON.stringify(ideas, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'triage_idea',
+    'Triage an idea during weekly review: keep active, snooze 2 weeks, archive, or promote to project',
+    {
+      id: z.string().describe('Idea UUID'),
+      action: z.enum(['keep', 'snooze', 'archive', 'promote']).describe('Triage action'),
+    },
+    async ({ id, action }) => {
+      const idea = await db('ideas').where({ id, user_id: userId }).first();
+      if (!idea) return { content: [{ type: 'text', text: 'Idea not found' }], isError: true };
+
+      const now = new Date().toISOString();
+      const updates = { last_reviewed_at: now };
+
+      if (action === 'archive') {
+        updates.archived = 1;
+      } else if (action === 'snooze') {
+        updates.snoozed_until = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (action === 'promote') {
+        const [project] = await db('projects').insert({
+          id: generateUUID(),
+          user_id: userId,
+          origin_idea_id: idea.id,
+          title: idea.title,
+          description: idea.summary,
+          tech_stack: idea.tech_stack || JSON.stringify([]),
+          vibe: idea.vibe || JSON.stringify([]),
+          excitement: idea.excitement,
+          status: 'planning',
+          project_plan: JSON.stringify({ goals: [], phases: [], estimatedDuration: null }),
+        }).returning('*');
+        updates.status = 'promoted-to-project';
+        updates.project_id = project.id;
+        await db('ideas').where({ id }).update(updates);
+        return { content: [{ type: 'text', text: `Promoted to project: ${JSON.stringify(project, null, 2)}` }] };
+      }
+
+      await db('ideas').where({ id }).update(updates);
+      return { content: [{ type: 'text', text: `Idea ${action}d successfully` }] };
+    }
+  );
+
+  // ── Capture ───────────────────────────────────────────────────────────────
 
   server.tool(
     'capture',

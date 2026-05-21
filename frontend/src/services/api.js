@@ -191,6 +191,17 @@ class APIClient {
   }
 
 
+  async getReviewQueue() {
+    return this.request('/ideas/review');
+  }
+
+  async triageIdea(id, action) {
+    return this.request(`/ideas/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  }
+
   async promoteIdea(id, projectData) {
     return this.request(`/ideas/${id}/promote`, {
       method: 'POST',
