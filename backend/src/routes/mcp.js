@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { aiService } from '../services/aiService.js';
+import { buildSystemPrompt, saveCapturedIdea } from './capture.js';
 
 const router = express.Router();
 
@@ -213,24 +214,43 @@ function buildServer(userId) {
 
   server.tool(
     'capture',
-    'Send a rough thought to the AI capture assistant — it will help shape and save it as an idea',
+    'Send a rough thought to the AI capture assistant — it will shape and save it as an idea',
     {
       message: z.string().describe('The rough thought, idea fragment, or observation to capture'),
     },
     async ({ message }) => {
       const [areas, recentIdeas] = await Promise.all([
         db('areas').where({ user_id: userId }).select('name').orderBy('sort_order'),
-        db('ideas').where({ user_id: userId }).select('title').orderBy('created_at', 'desc').limit(10),
+        db('ideas').where({ user_id: userId }).select('title', 'created_at').orderBy('created_at', 'desc').limit(20),
       ]);
 
-      const systemPrompt = `You are a personal capture assistant helping a developer log and shape ideas. Be concise and conversational. Areas: ${areas.map(a => a.name).join(', ') || 'none'}. Recent ideas: ${recentIdeas.map(i => i.title).join(', ') || 'none'}.`;
+      const systemPrompt = buildSystemPrompt(areas, recentIdeas);
 
       const response = await aiService.chatRaw(
         [{ role: 'user', content: message }],
         { systemPrompt }
       );
 
-      return { content: [{ type: 'text', text: response.content }] };
+      const fullContent = response.content;
+      const captures = [];
+      const displayContent = fullContent.replace(/CAPTURE:(\{[\s\S]*?\})(?=\n|$)/gm, (_, json) => {
+        try { captures.push(JSON.parse(json)); } catch {}
+        return '';
+      }).trim();
+
+      const savedIdeas = [];
+      for (const capture of captures) {
+        try {
+          const idea = await saveCapturedIdea(userId, capture, null);
+          if (idea) savedIdeas.push(idea);
+        } catch (e) { console.error('[mcp capture] Failed to save idea:', e); }
+      }
+
+      const savedNote = savedIdeas.length
+        ? `\n\n[Saved ${savedIdeas.length} idea${savedIdeas.length !== 1 ? 's' : ''}: ${savedIdeas.map(i => `"${i.title}"`).join(', ')}]`
+        : '';
+
+      return { content: [{ type: 'text', text: displayContent + savedNote }] };
     }
   );
 

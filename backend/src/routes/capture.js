@@ -15,7 +15,7 @@ function retentionCutoff() {
   return d;
 }
 
-async function saveCapturedIdea(userId, capture, messageId) {
+export async function saveCapturedIdea(userId, capture, messageId) {
   if (!capture.title?.trim()) return null;
 
   const existing = await db('ideas')
@@ -49,7 +49,7 @@ async function saveCapturedIdea(userId, capture, messageId) {
   return idea;
 }
 
-async function resolveAreaId(userId, areaName) {
+export async function resolveAreaId(userId, areaName) {
   if (!areaName) return null;
   try {
     const area = await db('areas')
@@ -59,7 +59,7 @@ async function resolveAreaId(userId, areaName) {
   } catch { return null; }
 }
 
-function buildSystemPrompt(areas, recentIdeas) {
+export function buildSystemPrompt(areas, recentIdeas) {
   const areaList = areas.length
     ? areas.map(a => a.name).join(', ')
     : 'work, personal, home (default - user has not set up areas yet)';
