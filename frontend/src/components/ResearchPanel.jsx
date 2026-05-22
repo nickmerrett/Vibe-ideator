@@ -1,6 +1,20 @@
 import { useState } from 'react';
 import { api } from '../services/api';
 
+function formatMarkdown(text) {
+  return text
+    .replace(/#{3} (.*?)$/gm, '<h3 class="text-base font-bold mt-4 mb-2">$1</h3>')
+    .replace(/#{2} (.*?)$/gm, '<h2 class="text-lg font-bold mt-5 mb-3">$1</h2>')
+    .replace(/#{1} (.*?)$/gm, '<h1 class="text-xl font-bold mt-6 mb-4">$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code class="bg-white/10 px-1.5 py-0.5 rounded text-xs text-primary">$1</code>')
+    .replace(/^- (.*?)$/gm, '<li class="ml-4 text-gray-200">$1</li>')
+    .replace(/^(\d+)\. (.*?)$/gm, '<li class="ml-4 text-gray-200">$2</li>')
+    .replace(/\n\n/g, '</p><p class="mb-3 text-gray-200 leading-relaxed">')
+    .replace(/^(?!<[h|l])/gm, '<p class="mb-3 text-gray-200 leading-relaxed">');
+}
+
 export default function ResearchPanel({ idea, onResearchSaved }) {
   const [state, setState] = useState(idea.research ? 'done' : 'idle');
   const [events, setEvents] = useState([]);
@@ -88,11 +102,11 @@ export default function ResearchPanel({ idea, onResearchSaved }) {
 
           {/* Answer */}
           {answer && (
-            <div className="glass rounded-xl p-4 border border-white/10">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-200">
-                {answer}
-                {state === 'running' && <span className="animate-pulse">▋</span>}
-              </p>
+            <div className="glass rounded-xl p-4 border border-white/10 text-sm">
+              <div
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(answer) }}
+              />
+              {state === 'running' && <span className="animate-pulse text-gray-400">▋</span>}
             </div>
           )}
 
