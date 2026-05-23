@@ -5,16 +5,15 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install build tools for native modules and beads install dependencies
-RUN apk add --no-cache python3 make g++ curl go
+# Install build tools for native modules
+# libc6-compat provides glibc shims needed to run glibc-linked binaries on Alpine
+RUN apk add --no-cache python3 make g++ libc6-compat
 
 # Install dependencies
 RUN npm install
 
-# Install beads CLI via official install script (falls back to CGO_ENABLED=0 go install
-# which produces a static binary — works on Alpine without glibc shims)
-RUN curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash && \
-    ln -sf /root/.local/bin/bd /usr/local/bin/bd
+# Install beads CLI
+RUN npm install -g @beads/bd
 
 # Copy source code
 COPY . .
