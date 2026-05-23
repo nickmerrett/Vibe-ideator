@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useDataStore } from '../store/useDataStore';
+import { MarkdownText } from '../utils/markdown';
 
 export default function PromoteChat({ idea, onClose, onPromote }) {
   const [messages, setMessages] = useState([]);
@@ -170,24 +171,27 @@ Keep responses concise (2-4 sentences). Be practical and action-oriented.`;
     setError(null);
 
     try {
-      // Ask AI to generate a structured project plan from the conversation
-      const planRequest = {
+      // Build a fresh single-message context so prior markdown responses don't bleed into the JSON output
+      const conversationSummary = messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n\n');
+
+      const planMessages = [{
         role: 'user',
-        content: `Based on our conversation, please create a structured project plan in JSON format with:
+        content: `Here is a project planning conversation:\n\n${conversationSummary}\n\nBased on the above, output a JSON object with exactly these fields:
 {
   "title": "project title",
   "description": "2-3 sentence description",
-  "goals": ["goal 1", "goal 2", ...],
-  "phases": [{"name": "Phase name", "description": "what happens", "estimatedDays": 7}, ...],
-  "initialTasks": [{"title": "task", "description": "details", "priority": "high|medium|low", "estimatedMinutes": 60}, ...],
-  "techStack": ["tech1", "tech2", ...],
+  "goals": ["goal 1", "goal 2"],
+  "phases": [{"name": "Phase name", "description": "what happens", "estimatedDays": 7}],
+  "initialTasks": [{"title": "task", "description": "details", "priority": "high|medium|low", "estimatedMinutes": 60}],
+  "techStack": ["tech1", "tech2"],
   "estimatedDuration": "X weeks/months"
 }
 
-Only respond with valid JSON, nothing else.`
-      };
-
-      const planMessages = [...messages, planRequest];
+Return only the raw JSON object. No markdown, no code fences, no explanation.`
+      }];
       const response = await api.chatWithAI(planMessages, {
         provider,
         systemPrompt: 'You are a project planning assistant. Respond ONLY with valid JSON. No markdown, no explanations, just the JSON object.'
@@ -196,12 +200,15 @@ Only respond with valid JSON, nothing else.`
       // Parse the AI response as JSON
       let planData;
       try {
-        // Try to extract JSON from markdown code blocks if present
-        const jsonMatch = response.message.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        const jsonStr = jsonMatch ? jsonMatch[1] : response.message;
+        const msg = response.message;
+        // 1. Try fenced code block
+        const fenceMatch = msg.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        // 2. Fall back to first { ... last }
+        const braceMatch = msg.match(/(\{[\s\S]*\})/);
+        const jsonStr = fenceMatch ? fenceMatch[1] : braceMatch ? braceMatch[1] : msg;
         planData = JSON.parse(jsonStr.trim());
       } catch (parseError) {
-        console.error('Failed to parse plan JSON:', parseError);
+        console.error('Failed to parse plan JSON:', parseError, response.message);
         throw new Error('AI returned invalid plan format. Please try again.');
       }
 
@@ -298,7 +305,10 @@ Only respond with valid JSON, nothing else.`
                       : 'glass'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  {msg.role === 'user'
+                    ? <div className="text-sm">{msg.content}</div>
+                    : <MarkdownText text={msg.content} className="text-sm" />
+                  }
                 </div>
               </div>
             ))}
