@@ -8,14 +8,14 @@ import { authenticateToken } from '../middleware/auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const STORAGE_DIR = process.env.SQLITE_DIR || join(__dirname, '../../../storage');
-const BEADS_DIR = join(STORAGE_DIR, '.beads');
-const BEADS_DB = join(BEADS_DIR, 'beads.db');
 const BD_BIN = process.env.BD_BINARY || 'bd';
+// HOME must be writable for Dolt's embedded engine config
+const BD_ENV = { ...process.env, HOME: STORAGE_DIR };
 
 function bd(args, opts = {}) {
   return new Promise((resolve) => {
-    execFile(BD_BIN, ['--db', BEADS_DB, ...args], { timeout: 10000, ...opts }, (err, stdout) => {
-      if (err) { console.warn('beads failed:', err.message); resolve(null); }
+    execFile(BD_BIN, ['-C', STORAGE_DIR, ...args], { timeout: 30000, env: BD_ENV, ...opts }, (err, stdout, stderr) => {
+      if (err) { console.warn('beads failed:', err.message, stderr); resolve(null); }
       else resolve(stdout.trim());
     });
   });
@@ -24,8 +24,7 @@ function bd(args, opts = {}) {
 let beadsReady = false;
 async function ensureBeadsInit() {
   if (beadsReady) return;
-  // init with CWD=STORAGE_DIR so it creates/uses .beads/ there
-  await bd(['init', '--prefix', 'vbr', '--skip-hooks', '--skip-merge-driver', '--quiet'], { cwd: STORAGE_DIR });
+  await bd(['init', '--prefix', 'vbr', '--skip-hooks', '--non-interactive', '--quiet']);
   beadsReady = true;
 }
 

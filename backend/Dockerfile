@@ -5,21 +5,22 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install build tools for native modules (e.g. multer/sharp)
-# libc6-compat provides glibc shims needed to run glibc-linked binaries on Alpine
-RUN apk add --no-cache python3 make g++ libc6-compat
+# Install build tools for native modules and beads install dependencies
+RUN apk add --no-cache python3 make g++ curl go
 
 # Install dependencies
 RUN npm install
 
-# Install beads CLI
-RUN npm install -g @beads/bd
+# Install beads CLI via official install script (falls back to CGO_ENABLED=0 go install
+# which produces a static binary — works on Alpine without glibc shims)
+RUN curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash && \
+    ln -sf /root/.local/bin/bd /usr/local/bin/bd
 
 # Copy source code
 COPY . .
 
 # Create directories and set permissions for arbitrary UID (OpenShift)
-RUN mkdir -p storage/projects storage/attachments storage/.beads logs && \
+RUN mkdir -p storage/projects storage/attachments logs && \
     chown -R 1001:0 /app && \
     chmod -R g+rwX /app
 
