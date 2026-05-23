@@ -268,10 +268,12 @@ router.post('/:id/promote', async (req, res) => {
 
     const tasks = await db('tasks').where({ project_id: project.id }).orderBy('sort_order');
 
-    // Create beads issues and save the epic ID back to the project
-    createBeadsIssues(project, initialTasks || []).then(async (epicId) => {
-      if (epicId) await db('projects').where({ id: project.id }).update({ beads_epic_id: epicId });
-    }).catch(() => {});
+    // Create beads issues — await so the returned project already has the epic ID
+    const epicId = await createBeadsIssues(project, initialTasks || []).catch(() => null);
+    if (epicId) {
+      await db('projects').where({ id: project.id }).update({ beads_epic_id: epicId });
+      project.beads_epic_id = epicId;
+    }
 
     res.status(201).json({ project, tasks });
   } catch (error) {
