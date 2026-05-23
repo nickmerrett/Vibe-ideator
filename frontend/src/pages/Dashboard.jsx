@@ -215,7 +215,7 @@ export default function Dashboard() {
       </nav>
 
       {showAreasSettings && <AreasSettings onClose={() => setShowAreasSettings(false)} />}
-      {showApiKey && <ApiKeySettings hasApiKey={!!user?.has_api_key} onClose={() => setShowApiKey(false)} />}
+      {showApiKey && <ApiKeySettings onClose={() => setShowApiKey(false)} />}
       {showWeeklyReview && <WeeklyReviewModal onClose={() => setShowWeeklyReview(false)} onComplete={() => {}} />}
 
       {/* Area Filter */}

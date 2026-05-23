@@ -163,23 +163,48 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// Generate API key — returns plaintext key once, stores only the hash
-router.post('/apikey', authenticateToken, async (req, res) => {
+// List API keys
+router.get('/api-keys', authenticateToken, async (req, res) => {
   try {
-    const key = 'vbr_' + crypto.randomBytes(32).toString('hex');
-    const hash = crypto.createHash('sha256').update(key).digest('hex');
-    await db('users').where({ id: req.user.userId }).update({ api_key_hash: hash });
-    res.json({ apiKey: key });
+    const keys = await db('api_keys')
+      .where({ user_id: req.user.userId })
+      .select('id', 'name', 'key_prefix', 'created_at', 'last_used')
+      .orderBy('created_at', 'desc');
+    res.json({ keys });
   } catch (error) {
-    console.error('Generate API key error:', error);
-    res.status(500).json({ error: 'Failed to generate API key' });
+    console.error('List API keys error:', error);
+    res.status(500).json({ error: 'Failed to list API keys' });
   }
 });
 
-// Revoke API key
-router.delete('/apikey', authenticateToken, async (req, res) => {
+// Create named API key — returns plaintext key once, stores only the hash
+router.post('/api-keys', authenticateToken, async (req, res) => {
   try {
-    await db('users').where({ id: req.user.userId }).update({ api_key_hash: null });
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Key name is required' });
+    }
+    const trimmed = name.trim().slice(0, 100);
+    const key = 'vbr_' + crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(key).digest('hex');
+    const prefix = key.slice(0, 12);
+    const [created] = await db('api_keys')
+      .insert({ id: generateUUID(), user_id: req.user.userId, name: trimmed, key_hash: hash, key_prefix: prefix, created_at: new Date() })
+      .returning(['id', 'name', 'key_prefix', 'created_at', 'last_used']);
+    res.status(201).json({ key: created, apiKey: key });
+  } catch (error) {
+    console.error('Create API key error:', error);
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+// Revoke a specific API key by id
+router.delete('/api-keys/:id', authenticateToken, async (req, res) => {
+  try {
+    const deleted = await db('api_keys')
+      .where({ id: req.params.id, user_id: req.user.userId })
+      .del();
+    if (!deleted) return res.status(404).json({ error: 'API key not found' });
     res.json({ success: true });
   } catch (error) {
     console.error('Revoke API key error:', error);
@@ -192,11 +217,10 @@ router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await db('users')
       .where({ id: req.user.userId })
-      .select('id', 'email', 'name', 'created_at', 'settings', 'subscription', 'ai_provider', 'api_key_hash')
+      .select('id', 'email', 'name', 'created_at', 'settings', 'subscription', 'ai_provider')
       .first();
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const { api_key_hash, ...safeUser } = user;
-    res.json({ user: { ...safeUser, has_api_key: !!api_key_hash } });
+    res.json({ user });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });

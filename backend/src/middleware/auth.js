@@ -23,12 +23,15 @@ export async function authenticateToken(req, res, next) {
   // API key path: vbr_ prefix
   if (token.startsWith('vbr_')) {
     try {
-      const user = await db('users')
-        .where({ api_key_hash: hashApiKey(token) })
-        .select('id', 'email')
+      const hash = hashApiKey(token);
+      const row = await db('api_keys as k')
+        .join('users as u', 'k.user_id', 'u.id')
+        .where('k.key_hash', hash)
+        .select('u.id', 'u.email', 'k.id as key_id')
         .first();
-      if (!user) return res.status(401).json({ error: 'Invalid API key' });
-      req.user = { userId: user.id, email: user.email };
+      if (!row) return res.status(401).json({ error: 'Invalid API key' });
+      await db('api_keys').where({ id: row.key_id }).update({ last_used: new Date() });
+      req.user = { userId: row.id, email: row.email };
       return next();
     } catch (error) {
       return res.status(500).json({ error: 'Authentication failed' });
