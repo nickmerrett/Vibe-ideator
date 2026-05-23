@@ -192,23 +192,21 @@ Keep responses concise (2-4 sentences). Be practical and action-oriented.`;
 
 Return only the raw JSON object. No markdown, no code fences, no explanation.`
       }];
-      const response = await api.chatWithAI(planMessages, {
-        provider,
-        systemPrompt: 'You are a project planning assistant. Respond ONLY with valid JSON. No markdown, no explanations, just the JSON object.'
-      });
+      const response = await api.generatePlan(planMessages, { provider });
+      if (response.error) throw new Error(response.error);
 
       // Parse the AI response as JSON
       let planData;
       try {
-        const msg = response.message;
-        // 1. Try fenced code block
-        const fenceMatch = msg.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        // 2. Fall back to first { ... last }
-        const braceMatch = msg.match(/(\{[\s\S]*\})/);
-        const jsonStr = fenceMatch ? fenceMatch[1] : braceMatch ? braceMatch[1] : msg;
+        const raw = (response.content || '').trim();
+        // Strip code fences if present
+        const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        // Or extract first {...} block
+        const braceMatch = raw.match(/\{[\s\S]*\}/);
+        const jsonStr = fenceMatch ? fenceMatch[1] : braceMatch ? braceMatch[0] : raw;
         planData = JSON.parse(jsonStr.trim());
       } catch (parseError) {
-        console.error('Failed to parse plan JSON:', parseError, response.message);
+        console.error('Failed to parse plan JSON:', parseError, response.content);
         throw new Error('AI returned invalid plan format. Please try again.');
       }
 

@@ -102,6 +102,25 @@ router.post('/chat', async (req, res) => {
   }
 });
 
+// Plan generation — returns raw AI text without structured-JSON parsing
+router.post('/generate-plan', async (req, res) => {
+  try {
+    const { messages, provider, model } = req.body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'Messages required' });
+    }
+    const response = await aiService.chat(messages, {
+      provider,
+      model,
+      systemPrompt: 'You are a project planning assistant. Respond ONLY with a raw JSON object. No markdown, no code fences, no explanation. Just the JSON.'
+    });
+    res.json({ content: response.content, provider: response.provider, model: response.model });
+  } catch (error) {
+    console.error('Generate plan error:', error);
+    res.status(500).json({ error: error.message || 'Plan generation failed' });
+  }
+});
+
 // Scaffold endpoint (stub for Phase 2)
 router.post('/scaffold', async (req, res) => {
   try {

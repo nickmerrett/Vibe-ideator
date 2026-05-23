@@ -313,6 +313,13 @@ class APIClient {
     });
   }
 
+  async generatePlan(messages, options = {}) {
+    return this.request('/ai/generate-plan', {
+      method: 'POST',
+      body: JSON.stringify({ messages, ...options }),
+    });
+  }
+
   async refineIdea(idea, options = {}) {
     return this.request('/ai/refine-idea', {
       method: 'POST',
