@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { MarkdownText } from '../utils/markdown.jsx';
 
+const REACTIONS = ['👍', '💡', '🔥'];
+
 function formatDate(str) {
   return new Date(str).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
