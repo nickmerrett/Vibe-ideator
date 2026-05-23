@@ -1,6 +1,64 @@
 import express from 'express';
+import { execFile } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const STORAGE_DIR = process.env.SQLITE_DIR || join(__dirname, '../../../storage');
+const BEADS_DIR = join(STORAGE_DIR, '.beads');
+const BEADS_DB = join(BEADS_DIR, 'beads.db');
+const BD_BIN = process.env.BD_BINARY || 'bd';
+
+function bd(args, opts = {}) {
+  return new Promise((resolve) => {
+    execFile(BD_BIN, ['--db', BEADS_DB, ...args], { timeout: 10000, ...opts }, (err, stdout) => {
+      if (err) { console.warn('beads failed:', err.message); resolve(null); }
+      else resolve(stdout.trim());
+    });
+  });
+}
+
+let beadsReady = false;
+async function ensureBeadsInit() {
+  if (beadsReady) return;
+  // init with CWD=STORAGE_DIR so it creates/uses .beads/ there
+  await bd(['init', '--prefix', 'vbr', '--skip-hooks', '--skip-merge-driver', '--quiet'], { cwd: STORAGE_DIR });
+  beadsReady = true;
+}
+
+async function createBeadsIssues(project, initialTasks) {
+  await ensureBeadsInit();
+
+  const epicId = await bd([
+    'create', '--title', project.title,
+    '--type', 'epic',
+    '--priority', '2',
+    '--description', project.description || '',
+    '--silent',
+  ]);
+  if (!epicId) return;
+
+  const priorityMap = { high: '1', medium: '2', low: '3' };
+
+  for (const task of initialTasks) {
+    const args = [
+      'create', '--title', task.title,
+      '--type', 'task',
+      '--priority', priorityMap[task.priority] || '2',
+      '--parent', epicId,
+      '--silent',
+    ];
+    if (task.description) args.push('--description', task.description);
+    if (task.estimatedMinutes) args.push('--estimate', String(task.estimatedMinutes));
+    await bd(args);
+  }
+
+  console.log(`beads: created epic ${epicId} with ${initialTasks.length} tasks for "${project.title}"`);
+  return epicId;
+}
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -209,6 +267,9 @@ router.post('/:id/promote', async (req, res) => {
     await db('ideas').where({ id: idea.id }).update({ status: 'promoted-to-project', project_id: project.id });
 
     const tasks = await db('tasks').where({ project_id: project.id }).orderBy('sort_order');
+
+    // Fire-and-forget beads issue creation — non-fatal
+    createBeadsIssues(project, initialTasks || []).catch(() => {});
 
     res.status(201).json({ project, tasks });
   } catch (error) {

@@ -11,11 +11,14 @@ RUN apk add --no-cache python3 make g++
 # Install dependencies
 RUN npm install
 
+# Install beads CLI
+RUN npm install -g @beads/bd
+
 # Copy source code
 COPY . .
 
 # Create directories and set permissions for arbitrary UID (OpenShift)
-RUN mkdir -p storage/projects storage/attachments logs && \
+RUN mkdir -p storage/projects storage/attachments storage/.beads logs && \
     chown -R 1001:0 /app && \
     chmod -R g+rwX /app
 

@@ -27,6 +27,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       DB_TYPE: ${DB_TYPE:-sqlite}
       SQLITE_DIR: /app/storage
+      BEADS_DIR: /app/storage/.beads
       DATABASE_URL: postgresql://viberater:${DB_PASSWORD:-viberater_dev_password}@postgres:5432/viberater
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-min-32-chars}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY}
