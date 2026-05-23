@@ -10,7 +10,7 @@ const BD_ENV = { ...process.env, HOME: STORAGE_DIR };
 
 function bdExport() {
   return new Promise((resolve, reject) => {
-    execFile(BD_BIN, ['-C', STORAGE_DIR, 'export', '--force'], { timeout: 15000, maxBuffer: 10 * 1024 * 1024, env: BD_ENV }, (err, stdout) => {
+    execFile(BD_BIN, ['-C', STORAGE_DIR, 'export'], { timeout: 15000, maxBuffer: 10 * 1024 * 1024, env: BD_ENV }, (err, stdout) => {
       if (err) reject(err);
       else resolve(stdout);
     });
