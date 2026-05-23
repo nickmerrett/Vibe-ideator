@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useDataStore } from '../store/useDataStore';
-import { MarkdownText } from '../utils/markdown';
+import { MarkdownText } from '../utils/markdown.jsx';
 
 export default function PromoteChat({ idea, onClose, onPromote }) {
   const [messages, setMessages] = useState([]);
