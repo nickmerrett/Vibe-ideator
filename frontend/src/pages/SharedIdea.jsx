@@ -4,6 +4,37 @@ import { api } from '../services/api';
 
 const REACTIONS = ['👍', '💡', '🔥'];
 
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/^### (.*?)$/gm, '<h3 class="text-lg font-bold mt-5 mb-2">$1</h3>')
+    .replace(/^## (.*?)$/gm, '<h2 class="text-xl font-bold mt-6 mb-3">$1</h2>')
+    .replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1.5 py-0.5 rounded text-sm text-accent">$1</code>')
+    .replace(/^- (.*?)$/gm, '<li class="ml-5 list-disc">$1</li>')
+    .replace(/^(\d+)\. (.*?)$/gm, '<li class="ml-5 list-decimal">$2</li>')
+    .replace(/\n\n/g, '</p><p class="mb-3">')
+    .replace(/\n/g, '<br/>');
+}
+
+function MarkdownText({ text, className = '' }) {
+  return (
+    <div
+      className={`prose-like leading-relaxed ${className}`}
+      dangerouslySetInnerHTML={{ __html: `<p class="mb-3">${formatMarkdown(text)}</p>` }}
+    />
+  );
+}
+
 function formatDate(str) {
   return new Date(str).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -114,7 +145,7 @@ export default function SharedIdea() {
         {/* Summary */}
         {data.summary && (
           <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
-            <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{data.summary}</p>
+            <MarkdownText text={data.summary} className="text-gray-200" />
           </div>
         )}
 
@@ -122,7 +153,7 @@ export default function SharedIdea() {
         {data.notes && (
           <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
             <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Notes</h2>
-            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.notes}</p>
+            <MarkdownText text={data.notes} className="text-gray-300 text-sm" />
           </div>
         )}
 
@@ -130,7 +161,7 @@ export default function SharedIdea() {
         {data.design_document && (
           <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
             <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Design</h2>
-            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.design_document}</p>
+            <MarkdownText text={data.design_document} className="text-gray-300 text-sm" />
           </div>
         )}
 
@@ -138,7 +169,7 @@ export default function SharedIdea() {
         {data.research && (
           <div className="glass rounded-2xl p-6 mb-6 border border-white/10">
             <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Validation</h2>
-            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{data.research}</p>
+            <MarkdownText text={data.research} className="text-gray-300 text-sm" />
           </div>
         )}
 
@@ -175,7 +206,10 @@ export default function SharedIdea() {
                       ? 'bg-primary/20 text-white border border-primary/20'
                       : 'bg-white/5 text-gray-300 border border-white/10'
                   }`}>
-                    {msg.content}
+                    {msg.role === 'user'
+                      ? msg.content
+                      : <MarkdownText text={msg.content} className="text-sm" />
+                    }
                   </div>
                 </div>
               ))}
