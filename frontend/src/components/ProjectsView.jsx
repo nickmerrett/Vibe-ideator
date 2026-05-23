@@ -217,6 +217,18 @@ export default function ProjectsView({ activeArea = null }) {
                 Repository
               </a>
             )}
+            {selectedProject.beads_epic_id && (
+              <button
+                onClick={async () => {
+                  const filename = `${selectedProject.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-beads.jsonl`;
+                  await api.downloadBeadsExport(selectedProject.id, filename);
+                }}
+                className="text-primary/70 hover:text-primary transition-colors flex items-center gap-1 text-sm"
+                title="Download beads issues (bd import -i file.jsonl)"
+              >
+                ⬇ beads
+              </button>
+            )}
           </div>
         </div>
 
@@ -257,7 +269,10 @@ export default function ProjectsView({ activeArea = null }) {
                   <input
                     type="checkbox"
                     checked={task.status === 'completed'}
-                    onChange={() => completeTask(selectedProject.id, task.id)}
+                    onChange={() => task.status === 'completed'
+                      ? updateTask(selectedProject.id, task.id, { status: 'open' })
+                      : completeTask(selectedProject.id, task.id)
+                    }
                     className="mt-1 w-5 h-5 rounded accent-primary cursor-pointer"
                   />
                   <div className="flex-1">

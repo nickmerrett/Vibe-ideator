@@ -1,6 +1,7 @@
 import express from 'express';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { createBeadsTask } from '../services/beadsService.js';
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -38,9 +39,8 @@ router.get('/project/:projectId', async (req, res) => {
 
 router.post('/project/:projectId', async (req, res) => {
   try {
-    if (!await ownedProject(req.params.projectId, req.user.userId)) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
+    const project = await ownedProject(req.params.projectId, req.user.userId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const { title, description, priority, estimatedMinutes, sortOrder } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
@@ -54,6 +54,12 @@ router.post('/project/:projectId', async (req, res) => {
       estimated_minutes: estimatedMinutes || null,
       sort_order: sortOrder || 0,
     }).returning('*');
+
+    if (project.beads_epic_id) {
+      createBeadsTask(task, project.beads_epic_id).catch(err =>
+        console.warn('beads task creation failed:', err.message)
+      );
+    }
 
     res.status(201).json({ task });
   } catch (error) {

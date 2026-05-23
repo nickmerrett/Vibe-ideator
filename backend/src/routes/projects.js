@@ -1,21 +1,7 @@
 import express from 'express';
-import { execFile } from 'child_process';
-import { join } from 'path';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
-
-const STORAGE_DIR = process.env.SQLITE_DIR || join(new URL('../..', import.meta.url).pathname, '../storage');
-const BD_BIN = process.env.BD_BINARY || 'bd';
-const BD_ENV = { ...process.env, HOME: STORAGE_DIR };
-
-function bdExport() {
-  return new Promise((resolve, reject) => {
-    execFile(BD_BIN, ['-C', STORAGE_DIR, 'export'], { timeout: 15000, maxBuffer: 10 * 1024 * 1024, env: BD_ENV }, (err, stdout) => {
-      if (err) reject(err);
-      else resolve(stdout);
-    });
-  });
-}
+import { bdExport } from '../services/beadsService.js';
 
 const router = express.Router();
 router.use(authenticateToken);

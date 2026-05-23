@@ -1,63 +1,7 @@
 import express from 'express';
-import { execFile } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const STORAGE_DIR = process.env.SQLITE_DIR || join(__dirname, '../../../storage');
-const BD_BIN = process.env.BD_BINARY || 'bd';
-// HOME must be writable for Dolt's embedded engine config
-const BD_ENV = { ...process.env, HOME: STORAGE_DIR };
-
-function bd(args, opts = {}) {
-  return new Promise((resolve) => {
-    execFile(BD_BIN, ['-C', STORAGE_DIR, ...args], { timeout: 30000, env: BD_ENV, ...opts }, (err, stdout, stderr) => {
-      if (err) { console.warn('beads failed:', err.message, stderr); resolve(null); }
-      else resolve(stdout.trim());
-    });
-  });
-}
-
-let beadsReady = false;
-async function ensureBeadsInit() {
-  if (beadsReady) return;
-  await bd(['init', '--prefix', 'vbr', '--skip-hooks', '--non-interactive', '--quiet']);
-  beadsReady = true;
-}
-
-async function createBeadsIssues(project, initialTasks) {
-  await ensureBeadsInit();
-
-  const epicId = await bd([
-    'create', '--title', project.title,
-    '--type', 'epic',
-    '--priority', '2',
-    '--description', project.description || '',
-    '--silent',
-  ]);
-  if (!epicId) return;
-
-  const priorityMap = { high: '1', medium: '2', low: '3' };
-
-  for (const task of initialTasks) {
-    const args = [
-      'create', '--title', task.title,
-      '--type', 'task',
-      '--priority', priorityMap[task.priority] || '2',
-      '--parent', epicId,
-      '--silent',
-    ];
-    if (task.description) args.push('--description', task.description);
-    if (task.estimatedMinutes) args.push('--estimate', String(task.estimatedMinutes));
-    await bd(args);
-  }
-
-  console.log(`beads: created epic ${epicId} with ${initialTasks.length} tasks for "${project.title}"`);
-  return epicId;
-}
+import { createBeadsIssues } from '../services/beadsService.js';
 
 const router = express.Router();
 router.use(authenticateToken);
