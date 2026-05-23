@@ -1,6 +1,21 @@
 import express from 'express';
+import { execFile } from 'child_process';
+import { join } from 'path';
 import { db, generateUUID } from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+
+const STORAGE_DIR = process.env.SQLITE_DIR || join(new URL('../..', import.meta.url).pathname, '../storage');
+const BEADS_DB = join(STORAGE_DIR, '.beads/beads.db');
+const BD_BIN = process.env.BD_BINARY || 'bd';
+
+function bdExport() {
+  return new Promise((resolve, reject) => {
+    execFile(BD_BIN, ['--db', BEADS_DB, 'export', '--force'], { timeout: 15000, maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+      if (err) reject(err);
+      else resolve(stdout);
+    });
+  });
+}
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -169,6 +184,37 @@ router.post('/:id/demote', async (req, res) => {
   } catch (error) {
     console.error('Demote project error:', error);
     res.status(500).json({ error: 'Failed to demote project' });
+  }
+});
+
+// Download beads issues for a project as JSONL
+router.get('/:id/beads-export', async (req, res) => {
+  try {
+    const project = await db('projects').where({ id: req.params.id, user_id: req.user.userId }).first();
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!project.beads_epic_id) return res.status(404).json({ error: 'No beads issues for this project' });
+
+    const jsonl = await bdExport();
+
+    // Filter to just this project's epic and its children
+    const epicId = project.beads_epic_id;
+    const lines = jsonl.split('\n').filter(Boolean);
+    const filtered = lines.filter(line => {
+      try {
+        const issue = JSON.parse(line);
+        return issue.id === epicId || issue.parent === epicId;
+      } catch { return false; }
+    });
+
+    if (filtered.length === 0) return res.status(404).json({ error: 'No beads issues found for this project' });
+
+    const filename = `${project.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-beads.jsonl`;
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(filtered.join('\n') + '\n');
+  } catch (error) {
+    console.error('Beads export error:', error);
+    res.status(500).json({ error: 'Failed to export beads issues' });
   }
 });
 

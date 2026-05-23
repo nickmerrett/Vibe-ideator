@@ -230,6 +230,20 @@ class APIClient {
     return this.request(`/projects/${id}`);
   }
 
+  async downloadBeadsExport(id, filename) {
+    const token = localStorage.getItem('viberater_access_token');
+    const res = await fetch(`${this.baseURL}/projects/${id}/beads-export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) { const d = await res.json(); return { error: d.error }; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    return { success: true };
+  }
+
   async createProject(data) {
     return this.request('/projects', {
       method: 'POST',

@@ -644,11 +644,26 @@ export default function ProjectsView({ activeArea = null }) {
                     )}
                   </div>
 
-                  {project.created_at && (
-                    <span className="text-xs text-gray-500">
-                      Promoted {new Date(project.created_at).toLocaleDateString()}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {project.beads_epic_id && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const filename = `${project.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-beads.jsonl`;
+                          await api.downloadBeadsExport(project.id, filename);
+                        }}
+                        className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+                        title="Download beads issues (bd import -i file.jsonl)"
+                      >
+                        ⬇ beads
+                      </button>
+                    )}
+                    {project.created_at && (
+                      <span className="text-xs text-gray-500">
+                        Promoted {new Date(project.created_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
