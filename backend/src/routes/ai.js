@@ -112,6 +112,7 @@ router.post('/generate-plan', async (req, res) => {
     const response = await aiService.chat(messages, {
       provider,
       model,
+      maxTokens: 8192,
       systemPrompt: 'You are a project planning assistant. Respond ONLY with a raw JSON object. No markdown, no code fences, no explanation. Just the JSON.'
     });
     res.json({ content: response.content, provider: response.provider, model: response.model });
