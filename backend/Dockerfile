@@ -6,7 +6,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install build tools for native modules (e.g. multer/sharp)
-RUN apk add --no-cache python3 make g++
+# libc6-compat provides glibc shims needed to run glibc-linked binaries on Alpine
+RUN apk add --no-cache python3 make g++ libc6-compat
 
 # Install dependencies
 RUN npm install
